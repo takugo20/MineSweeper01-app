@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>マインスイーパー</title>
+  <style>
+    :root {
+      --cell-size: 34px;
+      --gap: 3px;
+      --bg: #eef3f8;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --cell-closed: #94a3b8;
+      --cell-closed-dark: #64748b;
+      --cell-open: #e5e7eb;
+      --cell-border: #cbd5e1;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: radial-gradient(circle at top, #dbeafe 0%, var(--bg) 42%, #e2e8f0 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    body {
+      padding: 16px;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    button {
+      font: inherit;
+      touch-action: manipulation;
+    }
+
+    .app {
+      width: min(100%, 820px);
+      margin: 0 auto;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app.clear-glow {
+      animation: clearGlow 1.3s ease-in-out infinite alternate;
+    }
+
+    @keyframes clearGlow {
+      from {
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14), 0 0 0 rgba(34, 197, 94, 0);
+      }
+      to {
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14), 0 0 42px rgba(34, 197, 94, 0.62);
+      }
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 5vw, 36px);
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .reset-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.24);
+    }
+
+    .reset-btn:active {
+      transform: translateY(1px);
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .control-block {
+      padding: 12px;
+      border-radius: 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .difficulty-buttons,
+    .mode-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .difficulty-btn,
+    .mode-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      min-height: 42px;
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .difficulty-btn.active,
+    .mode-btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 8px 16px rgba(37, 99, 235, 0.24);
+    }
+
+    .status-panel {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .status-card {
+      padding: 12px;
+      border-radius: 16px;
+      background: #0f172a;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    .status-card .status-label {
+      display: block;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .status-card .status-value {
+      display: block;
+      font-size: 22px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .message {
+      min-height: 28px;
+      margin: 0 0 12px;
+      padding: 8px 12px;
+      border-radius: 14px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .board-wrapper {
+      width: 100%;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 20px;
+      background: #1e293b;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .board {
+      display: grid;
+      gap: var(--gap);
+      justify-content: start;
+      width: max-content;
+      margin: 0 auto;
+    }
+
+    .cell {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border: 0;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #a8b5c8, var(--cell-closed));
+      color: #0f172a;
+      font-size: 20px;
+      font-weight: 950;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.36), inset 0 -3px 0 rgba(15, 23, 42, 0.22);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .cell:active {
+      transform: translateY(1px);
+    }
+
+    .cell.open {
+      background: var(--cell-open);
+      border: 1px solid var(--cell-border);
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.12);
+      cursor: default;
+    }
+
+    .cell.flag {
+      background: linear-gradient(145deg, #fde68a, #f59e0b);
+    }
+
+    .cell.mine {
+      background: #fecaca;
+      color: #111827;
+    }
+
+    .cell.exploded {
+      background: var(--danger);
+      color: #ffffff;
+      animation: bombPulse 0.6s ease-in-out infinite alternate;
+    }
+
+    .cell.wrong-flag {
+      background: #fca5a5;
+      color: #7f1d1d;
+    }
+
+    @keyframes bombPulse {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.08);
+      }
+    }
+
+    .number-1 { color: #2563eb; }
+    .number-2 { color: #16a34a; }
+    .number-3 { color: #dc2626; }
+    .number-4 { color: #1e3a8a; }
+    .number-5 { color: #92400e; }
+    .number-6 { color: #0891b2; }
+    .number-7 { color: #111827; }
+    .number-8 { color: #6b7280; }
+
+    .best-panel {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .best-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .best-title h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .best-list {
+      margin: 0;
+      padding-left: 24px;
+      color: #334155;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .best-empty {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.62);
+      z-index: 20;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .overlay-card {
+      width: min(92vw, 420px);
+      padding: 26px 20px;
+      border-radius: 26px;
+      background: #ffffff;
+      text-align: center;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.36);
+      animation: popIn 0.22s ease-out;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(0.92) translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .overlay-title {
+      margin: 0 0 8px;
+      font-size: 34px;
+      font-weight: 950;
+      letter-spacing: 0.03em;
+    }
+
+    .overlay-title.clear {
+      color: var(--success);
+    }
+
+    .overlay-title.gameover {
+      color: var(--danger);
+    }
+
+    .overlay-message {
+      margin: 0 0 18px;
+      color: #475569;
+      line-height: 1.7;
+      font-weight: 700;
+    }
+
+    .overlay-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 13px 26px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+    }
+
+    .overlay-btn:active {
+      transform: translateY(1px);
+    }
+
+    @media (min-width: 720px) {
+      .controls {
+        grid-template-columns: 1.3fr 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 10px;
+      }
+
+      .app {
+        padding: 14px;
+        border-radius: 20px;
+      }
+
+      .title-row {
+        flex-direction: column;
+      }
+
+      .reset-btn {
+        width: 100%;
+      }
+
+      .status-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .status-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+      }
+
+      .status-card .status-label {
+        margin-bottom: 0;
+      }
+
+      .board-wrapper {
+        padding: 9px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <div class="title-row">
+      <div>
+        <h1>マインスイーパー</h1>
+        <p class="subtitle">最初に開いたマスと周囲8マスは安全です。</p>
+      </div>
+      <button class="reset-btn" id="resetBtn" type="button">RESET</button>
+    </div>
+
+    <section class="controls" aria-label="ゲーム設定">
+      <div class="control-block">
+        <span class="label">難易度</span>
+        <div class="difficulty-buttons" id="difficultyButtons">
+          <button class="difficulty-btn active" type="button" data-level="beginner">初級 9×9 / 10</button>
+          <button class="difficulty-btn" type="button" data-level="intermediate">中級 12×12 / 25</button>
+          <button class="difficulty-btn" type="button" data-level="advanced">上級 16×16 / 40</button>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <span class="label">モード</span>
+        <div class="mode-buttons" id="modeButtons">
+          <button class="mode-btn active" type="button" data-mode="open">開く</button>
+          <button class="mode-btn" type="button" data-mode="flag">旗 🚩</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-panel" aria-label="ゲーム状況">
+      <div class="status-card">
+        <span class="status-label">地雷</span>
+        <span class="status-value" id="mineCountEl">残り 10</span>
+      </div>
+      <div class="status-card">
+        <span class="status-label">時間</span>
+        <span class="status-value" id="timerEl">000秒</span>
+      </div>
+      <div class="status-card">
+        <span class="status-label">開いたマス</span>
+        <span class="status-value" id="openCountEl">0</span>
+      </div>
+    </section>
+
+    <p class="message" id="messageEl">マスを開いてスタートします。旗を立てるときは旗モードを使ってください。</p>
+
+    <div class="board-wrapper" aria-label="盤面エリア">
+      <div class="board" id="board"></div>
+    </div>
+
+    <section class="best-panel" aria-label="ベストタイム">
+      <div class="best-title">
+        <h2 id="bestTitle">初級 ベスト10</h2>
+      </div>
+      <div id="bestList"></div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="overlay-card">
+      <h2 class="overlay-title" id="overlayTitle">GAME OVER</h2>
+      <p class="overlay-message" id="overlayMessage"></p>
+      <button class="overlay-btn" id="overlayRetryBtn" type="button">RETRY</button>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const LEVELS = {
+      beginner: {
+        label: "初級",
+        rows: 9,
+        cols: 9,
+        mines: 10
+      },
+      intermediate: {
+        label: "中級",
+        rows: 12,
+        cols: 12,
+        mines: 25
+      },
+      advanced: {
+        label: "上級",
+        rows: 16,
+        cols: 16,
+        mines: 40
+      }
+    };
+
+    const STORAGE_KEY = "minesweeperBestTimesV1";
+    const appEl = document.getElementById("app");
+    const boardEl = document.getElementById("board");
+    const difficultyButtonsEl = document.getElementById("difficultyButtons");
+    const modeButtonsEl = document.getElementById("modeButtons");
+    const mineCountEl = document.getElementById("mineCountEl");
+    const timerEl = document.getElementById("timerEl");
+    const openCountEl = document.getElementById("openCountEl");
+    const messageEl = document.getElementById("messageEl");
+    const resetBtn = document.getElementById("resetBtn");
+    const overlayEl = document.getElementById("overlay");
+    const overlayTitleEl = document.getElementById("overlayTitle");
+    const overlayMessageEl = document.getElementById("overlayMessage");
+    const overlayRetryBtn = document.getElementById("overlayRetryBtn");
+    const bestTitleEl = document.getElementById("bestTitle");
+    const bestListEl = document.getElementById("bestList");
+
+    let currentLevelKey = "beginner";
+    let currentMode = "open";
+    let board = [];
+    let firstOpen = true;
+    let gameStatus = "ready";
+    let flagCount = 0;
+    let openCount = 0;
+    let timerId = null;
+    let startedAt = 0;
+    let elapsedSeconds = 0;
+    let explodedCell = null;
+    let audioContext = null;
+
+    function getLevel() {
+      return LEVELS[currentLevelKey];
+    }
+
+    function startGame() {
+      const level = getLevel();
+
+      stopTimer();
+      board = createEmptyBoard(level.rows, level.cols);
+      firstOpen = true;
+      gameStatus = "ready";
+      flagCount = 0;
+      openCount = 0;
+      elapsedSeconds = 0;
+      startedAt = 0;
+      explodedCell = null;
+
+      hideOverlay();
+      appEl.classList.remove("clear-glow");
+      updateDifficultyButtons();
+      updateModeButtons();
+      updateStatus();
+      renderBoard();
+      renderBestTimes();
+      setMessage("マスを開いてスタートします。旗を立てるときは旗モードを使ってください。");
+    }
+
+    function createEmptyBoard(rows, cols) {
+      const newBoard = [];
+
+      for (let row = 0; row < rows; row++) {
+        const rowCells = [];
+
+        for (let col = 0; col < cols; col++) {
+          rowCells.push({
+            row,
+            col,
+            isMine: false,
+            isOpen: false,
+            isFlagged: false,
+            aroundMines: 0
+          });
+        }
+
+        newBoard.push(rowCells);
+      }
+
+      return newBoard;
+    }
+
+    function renderBoard() {
+      const level = getLevel();
+      boardEl.innerHTML = "";
+      boardEl.style.gridTemplateColumns = `repeat(${level.cols}, var(--cell-size))`;
+
+      for (let row = 0; row < level.rows; row++) {
+        for (let col = 0; col < level.cols; col++) {
+          const cell = board[row][col];
+          const cellBtn = document.createElement("button");
+
+          cellBtn.type = "button";
+          cellBtn.className = getCellClassName(cell);
+          cellBtn.dataset.row = String(row);
+          cellBtn.dataset.col = String(col);
+          cellBtn.textContent = getCellText(cell);
+          cellBtn.setAttribute("aria-label", getCellAriaLabel(cell));
+
+          boardEl.appendChild(cellBtn);
+        }
+      }
+    }
+
+    function getCellClassName(cell) {
+      const classes = ["cell"];
+
+      if (gameStatus === "gameover" && explodedCell && cell.row === explodedCell.row && cell.col === explodedCell.col) {
+        classes.push("exploded");
+        return classes.join(" ");
+      }
+
+      if (gameStatus === "gameover" && cell.isFlagged && !cell.isMine) {
+        classes.push("wrong-flag");
+        return classes.join(" ");
+      }
+
+      if (gameStatus === "gameover" && cell.isMine) {
+        classes.push("mine");
+        return classes.join(" ");
+      }
+
+      if (cell.isOpen) {
+        classes.push("open");
+
+        if (cell.aroundMines > 0) {
+          classes.push(`number-${cell.aroundMines}`);
+        }
+      } else if (cell.isFlagged) {
+        classes.push("flag");
+      }
+
+      return classes.join(" ");
+    }
+
+    function getCellText(cell) {
+      if (gameStatus === "gameover" && explodedCell && cell.row === explodedCell.row && cell.col === explodedCell.col) {
+        return "💥";
+      }
+
+      if (gameStatus === "gameover" && cell.isFlagged && !cell.isMine) {
+        return "❌";
+      }
+
+      if (gameStatus === "gameover" && cell.isMine) {
+        return "💣";
+      }
+
+      if (cell.isOpen) {
+        if (cell.aroundMines > 0) {
+          return String(cell.aroundMines);
+        }
+
+        return "";
+      }
+
+      if (cell.isFlagged) {
+        return "🚩";
+      }
+
+      return "";
+    }
+
+    function getCellAriaLabel(cell) {
+      if (gameStatus === "gameover" && cell.isMine) {
+        return `地雷 ${cell.row + 1}行 ${cell.col + 1}列`;
+      }
+
+      if (cell.isOpen) {
+        if (cell.aroundMines > 0) {
+          return `開封済み 周囲の地雷 ${cell.aroundMines}個 ${cell.row + 1}行 ${cell.col + 1}列`;
+        }
+        return `開封済み 空白 ${cell.row + 1}行 ${cell.col + 1}列`;
+      }
+
+      if (cell.isFlagged) {
+        return `旗あり ${cell.row + 1}行 ${cell.col + 1}列`;
+      }
+
+      return `未開封 ${cell.row + 1}行 ${cell.col + 1}列`;
+    }
+
+    function handleBoardClick(event) {
+      unlockAudio();
+
+      const cellBtn = event.target.closest(".cell");
+      if (!cellBtn) return;
+
+      const row = Number(cellBtn.dataset.row);
+      const col = Number(cellBtn.dataset.col);
+
+      if (currentMode === "flag") {
+        toggleFlag(row, col);
+      } else {
+        openCell(row, col);
+      }
+    }
+
+    function handleBoardRightClick(event) {
+      const cellBtn = event.target.closest(".cell");
+      if (!cellBtn) return;
+
+      event.preventDefault();
+      unlockAudio();
+
+      const row = Number(cellBtn.dataset.row);
+      const col = Number(cellBtn.dataset.col);
+      toggleFlag(row, col);
+    }
+
+    function openCell(row, col) {
+      if (!isInBoard(row, col)) return;
+      if (gameStatus === "gameover" || gameStatus === "clear") return;
+
+      const cell = board[row][col];
+      if (cell.isOpen || cell.isFlagged) return;
+
+      if (firstOpen) {
+        firstOpen = false;
+        gameStatus = "playing";
+        placeMines(row, col);
+        calculateNumbers();
+        startTimer();
+      }
+
+      if (cell.isMine) {
+        cell.isOpen = true;
+        openCount++;
+        endGame(row, col);
+        return;
+      }
+
+      openArea(row, col);
+      playOpenSound();
+      checkWin();
+      updateStatus();
+      renderBoard();
+    }
+
+    function toggleFlag(row, col) {
+      if (!isInBoard(row, col)) return;
+      if (gameStatus === "gameover" || gameStatus === "clear") return;
+
+      const cell = board[row][col];
+      if (cell.isOpen) return;
+
+      if (!cell.isFlagged && flagCount >= getLevel().mines) {
+        setMessage("旗の数が地雷数に達しています。不要な旗を外してから立ててください。");
+        return;
+      }
+
+      cell.isFlagged = !cell.isFlagged;
+      flagCount += cell.isFlagged ? 1 : -1;
+
+      playFlagSound();
+      setMessage(cell.isFlagged ? "旗を立てました。" : "旗を外しました。");
+      updateStatus();
+      renderBoard();
+    }
+
+    function placeMines(firstRow, firstCol) {
+      const level = getLevel();
+      const safeCells = getSafeCells(firstRow, firstCol);
+      const candidates = [];
+
+      for (let row = 0; row < level.rows; row++) {
+        for (let col = 0; col < level.cols; col++) {
+          const key = getCellKey(row, col);
+
+          if (!safeCells.has(key)) {
+            candidates.push({ row, col });
+          }
+        }
+      }
+
+      shuffle(candidates);
+
+      for (let i = 0; i < level.mines; i++) {
+        const pos = candidates[i];
+        board[pos.row][pos.col].isMine = true;
+      }
+    }
+
+    function getSafeCells(row, col) {
+      const safeCells = new Set();
+
+      for (let dRow = -1; dRow <= 1; dRow++) {
+        for (let dCol = -1; dCol <= 1; dCol++) {
+          const nextRow = row + dRow;
+          const nextCol = col + dCol;
+
+          if (isInBoard(nextRow, nextCol)) {
+            safeCells.add(getCellKey(nextRow, nextCol));
+          }
+        }
+      }
+
+      return safeCells;
+    }
+
+    function getCellKey(row, col) {
+      return `${row},${col}`;
+    }
+
+    function calculateNumbers() {
+      const level = getLevel();
+
+      for (let row = 0; row < level.rows; row++) {
+        for (let col = 0; col < level.cols; col++) {
+          const cell = board[row][col];
+
+          if (cell.isMine) {
+            cell.aroundMines = 0;
+            continue;
+          }
+
+          cell.aroundMines = getNeighbors(row, col).filter((neighbor) => neighbor.isMine).length;
+        }
+      }
+    }
+
+    function openArea(startRow, startCol) {
+      const stack = [{ row: startRow, col: startCol }];
+
+      while (stack.length > 0) {
+        const current = stack.pop();
+        const row = current.row;
+        const col = current.col;
+
+        if (!isInBoard(row, col)) continue;
+
+        const cell = board[row][col];
+        if (cell.isOpen || cell.isFlagged) continue;
+        if (cell.isMine) continue;
+
+        cell.isOpen = true;
+        openCount++;
+
+        if (cell.aroundMines !== 0) continue;
+
+        for (const neighbor of getNeighbors(row, col)) {
+          if (!neighbor.isOpen && !neighbor.isFlagged && !neighbor.isMine) {
+            stack.push({ row: neighbor.row, col: neighbor.col });
+          }
+        }
+      }
+    }
+
+    function getNeighbors(row, col) {
+      const neighbors = [];
+
+      for (let dRow = -1; dRow <= 1; dRow++) {
+        for (let dCol = -1; dCol <= 1; dCol++) {
+          if (dRow === 0 && dCol === 0) continue;
+
+          const nextRow = row + dRow;
+          const nextCol = col + dCol;
+
+          if (isInBoard(nextRow, nextCol)) {
+            neighbors.push(board[nextRow][nextCol]);
+          }
+        }
+      }
+
+      return neighbors;
+    }
+
+    function isInBoard(row, col) {
+      const level = getLevel();
+      return row >= 0 && row < level.rows && col >= 0 && col < level.cols;
+    }
+
+    function checkWin() {
+      const level = getLevel();
+      const safeCellCount = level.rows * level.cols - level.mines;
+
+      if (openCount === safeCellCount) {
+        clearGame();
+      }
+    }
+
+    function endGame(row, col) {
+      refreshElapsedSeconds();
+      gameStatus = "gameover";
+      explodedCell = { row, col };
+      stopTimer();
+      playExplosionSound();
+      setMessage("地雷を踏みました。すべての地雷を表示しています。");
+      updateStatus();
+      renderBoard();
+      showOverlay({
+        title: "GAME OVER",
+        type: "gameover",
+        message: `時間：${formatTime(elapsedSeconds)}\n開いたマス：${openCount}`,
+        buttonText: "RETRY"
+      });
+    }
+
+    function clearGame() {
+      refreshElapsedSeconds();
+      gameStatus = "clear";
+      stopTimer();
+      saveBestTime(currentLevelKey, elapsedSeconds);
+      playFanfare();
+      appEl.classList.add("clear-glow");
+      setMessage("GAME CLEAR！地雷以外のすべてのマスを開きました。");
+      updateStatus();
+      renderBoard();
+      renderBestTimes();
+      showOverlay({
+        title: "GAME CLEAR！",
+        type: "clear",
+        message: `経過時間：${formatTime(elapsedSeconds)}\n開いたマス：${openCount}`,
+        buttonText: "もう一度"
+      });
+    }
+
+    function updateStatus() {
+      const level = getLevel();
+      mineCountEl.textContent = `残り ${level.mines - flagCount}`;
+      timerEl.textContent = formatTime(elapsedSeconds);
+      openCountEl.textContent = String(openCount);
+    }
+
+    function setMessage(text) {
+      messageEl.textContent = text;
+    }
+
+    function updateDifficultyButtons() {
+      const buttons = difficultyButtonsEl.querySelectorAll(".difficulty-btn");
+
+      buttons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.level === currentLevelKey);
+      });
+    }
+
+    function updateModeButtons() {
+      const buttons = modeButtonsEl.querySelectorAll(".mode-btn");
+
+      buttons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.mode === currentMode);
+      });
+    }
+
+    function handleDifficultyClick(event) {
+      unlockAudio();
+
+      const button = event.target.closest("button[data-level]");
+      if (!button) return;
+
+      currentLevelKey = button.dataset.level;
+      startGame();
+    }
+
+    function handleModeClick(event) {
+      unlockAudio();
+
+      const button = event.target.closest("button[data-mode]");
+      if (!button) return;
+
+      currentMode = button.dataset.mode;
+      updateModeButtons();
+      setMessage(currentMode === "open" ? "開くモードです。マスをタップすると開きます。" : "旗モードです。マスをタップすると旗を切り替えます。");
+    }
+
+    function startTimer() {
+      startedAt = Date.now() - elapsedSeconds * 1000;
+      updateTimer();
+      timerId = window.setInterval(updateTimer, 250);
+    }
+
+    function updateTimer() {
+      if (gameStatus !== "playing") return;
+
+      elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      updateStatus();
+    }
+
+    function stopTimer() {
+      if (timerId !== null) {
+        window.clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    function refreshElapsedSeconds() {
+      if (startedAt > 0) {
+        elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      }
+    }
+
+    function formatTime(seconds) {
+      return `${String(seconds).padStart(3, "0")}秒`;
+    }
+
+    function showOverlay({ title, type, message, buttonText }) {
+      overlayTitleEl.textContent = title;
+      overlayTitleEl.className = `overlay-title ${type}`;
+      overlayMessageEl.textContent = message;
+      overlayRetryBtn.textContent = buttonText;
+      overlayEl.classList.add("show");
+      overlayEl.setAttribute("aria-hidden", "false");
+    }
+
+    function hideOverlay() {
+      overlayEl.classList.remove("show");
+      overlayEl.setAttribute("aria-hidden", "true");
+    }
+
+    function loadBestTimes() {
+      const initialData = {
+        beginner: [],
+        intermediate: [],
+        advanced: []
+      };
+
+      try {
+        const json = localStorage.getItem(STORAGE_KEY);
+        if (!json) return initialData;
+
+        const parsed = JSON.parse(json);
+
+        return {
+          beginner: Array.isArray(parsed.beginner) ? parsed.beginner : [],
+          intermediate: Array.isArray(parsed.intermediate) ? parsed.intermediate : [],
+          advanced: Array.isArray(parsed.advanced) ? parsed.advanced : []
+        };
+      } catch (error) {
+        console.warn("ベストタイムの読み込みに失敗しました。", error);
+        return initialData;
+      }
+    }
+
+    function saveBestTime(levelKey, seconds) {
+      const bestTimes = loadBestTimes();
+      const record = {
+        time: seconds,
+        date: new Date().toISOString()
+      };
+
+      bestTimes[levelKey].push(record);
+      bestTimes[levelKey].sort((a, b) => a.time - b.time);
+      bestTimes[levelKey] = bestTimes[levelKey].slice(0, 10);
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(bestTimes));
+      } catch (error) {
+        console.warn("ベストタイムの保存に失敗しました。", error);
+      }
+    }
+
+    function renderBestTimes() {
+      const level = getLevel();
+      const bestTimes = loadBestTimes()[currentLevelKey];
+      bestTitleEl.textContent = `${level.label} ベスト10`;
+      bestListEl.innerHTML = "";
+
+      if (bestTimes.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "best-empty";
+        empty.textContent = "まだ記録がありません。";
+        bestListEl.appendChild(empty);
+        return;
+      }
+
+      const list = document.createElement("ol");
+      list.className = "best-list";
+
+      bestTimes.forEach((record) => {
+        const item = document.createElement("li");
+        item.textContent = formatTime(record.time);
+        list.appendChild(item);
+      });
+
+      bestListEl.appendChild(list);
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+      }
+    }
+
+    function unlockAudio() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        audioContext = new AudioContextClass();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+    }
+
+    function playTone({ frequency, duration, type = "sine", volume = 0.08, startTime = 0 }) {
+      if (!audioContext) return;
+
+      const now = audioContext.currentTime + startTime;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + duration + 0.02);
+    }
+
+    function playOpenSound() {
+      playTone({ frequency: 520, duration: 0.045, type: "triangle", volume: 0.045 });
+    }
+
+    function playFlagSound() {
+      playTone({ frequency: 880, duration: 0.055, type: "square", volume: 0.035 });
+    }
+
+    function playExplosionSound() {
+      if (!audioContext) return;
+
+      const now = audioContext.currentTime;
+      const bufferSize = audioContext.sampleRate * 0.38;
+      const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) {
+        const fade = 1 - i / bufferSize;
+        data[i] = (Math.random() * 2 - 1) * fade;
+      }
+
+      const noise = audioContext.createBufferSource();
+      const filter = audioContext.createBiquadFilter();
+      const gain = audioContext.createGain();
+
+      noise.buffer = buffer;
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(420, now);
+      filter.frequency.exponentialRampToValueAtTime(80, now + 0.35);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioContext.destination);
+      noise.start(now);
+      noise.stop(now + 0.38);
+
+      playTone({ frequency: 90, duration: 0.35, type: "sawtooth", volume: 0.11 });
+    }
+
+    function playFanfare() {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+
+      notes.forEach((frequency, index) => {
+        playTone({
+          frequency,
+          duration: 0.18,
+          type: "triangle",
+          volume: 0.075,
+          startTime: index * 0.14
+        });
+      });
+
+      playTone({ frequency: 1318.51, duration: 0.42, type: "sine", volume: 0.07, startTime: 0.56 });
+    }
+
+    difficultyButtonsEl.addEventListener("click", handleDifficultyClick);
+    modeButtonsEl.addEventListener("click", handleModeClick);
+    boardEl.addEventListener("click", handleBoardClick);
+    boardEl.addEventListener("contextmenu", handleBoardRightClick);
+    resetBtn.addEventListener("click", () => {
+      unlockAudio();
+      startGame();
+    });
+    overlayRetryBtn.addEventListener("click", () => {
+      unlockAudio();
+      startGame();
+    });
+
+    document.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+    }, { passive: false });
+
+    startGame();
+  </script>
+</body>
+</html>
