@@ -123,6 +123,10 @@
       border: 1px solid #e2e8f0;
     }
 
+    .mode-control {
+      margin-bottom: 12px;
+    }
+
     .label {
       display: block;
       margin-bottom: 8px;
@@ -185,18 +189,6 @@
       font-size: 22px;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
-    }
-
-    .message {
-      min-height: 28px;
-      margin: 0 0 12px;
-      padding: 8px 12px;
-      border-radius: 14px;
-      background: #eff6ff;
-      color: #1e3a8a;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.5;
     }
 
     .board-wrapper {
@@ -374,6 +366,7 @@
       color: #475569;
       line-height: 1.7;
       font-weight: 700;
+      white-space: pre-line;
     }
 
     .overlay-btn {
@@ -390,12 +383,6 @@
 
     .overlay-btn:active {
       transform: translateY(1px);
-    }
-
-    @media (min-width: 720px) {
-      .controls {
-        grid-template-columns: 1.3fr 1fr;
-      }
     }
 
     @media (max-width: 520px) {
@@ -456,14 +443,6 @@
           <button class="difficulty-btn" type="button" data-level="advanced">上級 16×16 / 40</button>
         </div>
       </div>
-
-      <div class="control-block">
-        <span class="label">モード</span>
-        <div class="mode-buttons" id="modeButtons">
-          <button class="mode-btn active" type="button" data-mode="open">開く</button>
-          <button class="mode-btn" type="button" data-mode="flag">旗 🚩</button>
-        </div>
-      </div>
     </section>
 
     <section class="status-panel" aria-label="ゲーム状況">
@@ -481,7 +460,13 @@
       </div>
     </section>
 
-    <p class="message" id="messageEl">マスを開いてスタートします。旗を立てるときは旗モードを使ってください。</p>
+    <section class="control-block mode-control" aria-label="操作モード">
+      <span class="label">モード</span>
+      <div class="mode-buttons" id="modeButtons">
+        <button class="mode-btn active" type="button" data-mode="open">開く</button>
+        <button class="mode-btn" type="button" data-mode="flag">旗 🚩</button>
+      </div>
+    </section>
 
     <div class="board-wrapper" aria-label="盤面エリア">
       <div class="board" id="board"></div>
@@ -535,7 +520,6 @@
     const mineCountEl = document.getElementById("mineCountEl");
     const timerEl = document.getElementById("timerEl");
     const openCountEl = document.getElementById("openCountEl");
-    const messageEl = document.getElementById("messageEl");
     const resetBtn = document.getElementById("resetBtn");
     const overlayEl = document.getElementById("overlay");
     const overlayTitleEl = document.getElementById("overlayTitle");
@@ -581,7 +565,6 @@
       updateStatus();
       renderBoard();
       renderBestTimes();
-      setMessage("マスを開いてスタートします。旗を立てるときは旗モードを使ってください。");
     }
 
     function createEmptyBoard(rows, cols) {
@@ -772,7 +755,6 @@
       if (cell.isOpen) return;
 
       if (!cell.isFlagged && flagCount >= getLevel().mines) {
-        setMessage("旗の数が地雷数に達しています。不要な旗を外してから立ててください。");
         return;
       }
 
@@ -780,7 +762,6 @@
       flagCount += cell.isFlagged ? 1 : -1;
 
       playFlagSound();
-      setMessage(cell.isFlagged ? "旗を立てました。" : "旗を外しました。");
       updateStatus();
       renderBoard();
     }
@@ -912,7 +893,6 @@
       explodedCell = { row, col };
       stopTimer();
       playExplosionSound();
-      setMessage("地雷を踏みました。すべての地雷を表示しています。");
       updateStatus();
       renderBoard();
       showOverlay({
@@ -930,7 +910,6 @@
       saveBestTime(currentLevelKey, elapsedSeconds);
       playFanfare();
       appEl.classList.add("clear-glow");
-      setMessage("GAME CLEAR！地雷以外のすべてのマスを開きました。");
       updateStatus();
       renderBoard();
       renderBestTimes();
@@ -947,10 +926,6 @@
       mineCountEl.textContent = `残り ${level.mines - flagCount}`;
       timerEl.textContent = formatTime(elapsedSeconds);
       openCountEl.textContent = String(openCount);
-    }
-
-    function setMessage(text) {
-      messageEl.textContent = text;
     }
 
     function updateDifficultyButtons() {
@@ -987,7 +962,6 @@
 
       currentMode = button.dataset.mode;
       updateModeButtons();
-      setMessage(currentMode === "open" ? "開くモードです。マスをタップすると開きます。" : "旗モードです。マスをタップすると旗を切り替えます。");
     }
 
     function startTimer() {
